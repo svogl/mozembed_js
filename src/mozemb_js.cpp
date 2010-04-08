@@ -230,15 +230,14 @@ static JSBool initEnvironment(void)
    gtk_set_locale();
     gtk_init(&argc, &argv);
 
-    cerr << "init_gtk 1a " << endl;
-//    gtk_moz_embed_set_comp_path("/usr/lib/xulrunner-1.9.1.8/components/");
-    cerr << "init_gtk 1b " << endl;
-//    gtk_moz_embed_set_profile_path("/tmp","web_browser_user");
-    cerr << "init_gtk 1c " << endl;
+    cerr << "initEnv 10a " << endl;
+#if 0
+    gtk_moz_embed_set_comp_path("/usr/lib/xulrunner-1.9.1.8/components/");
+    cerr << "initEnv 11a " << endl;
+    gtk_moz_embed_set_profile_path("/tmp","web_browser_user");
+    cerr << "initEnv 12a " << endl;
 
-  gtk_moz_embed_push_startup();
-
-#if 1
+#else
 
   static const GREVersionRange greVersion = {
     "1.9a", PR_TRUE,
@@ -253,22 +252,27 @@ static JSBool initEnvironment(void)
     fprintf(stderr, "Couldn't find a compatible GRE.\n");
     return 1;
   }
+    cerr << "initEnv 2a " << endl;
 
   rv = XPCOMGlueStartup(xpcomPath);
   if (NS_FAILED(rv)) {
     fprintf(stderr, "Couldn't start XPCOM.");
     return 1;
   }
+    cerr << "initEnv 3a " << endl;
 
   rv = GTKEmbedGlueStartup();
   if (NS_FAILED(rv)) {
     fprintf(stderr, "Couldn't find GTKMozEmbed symbols.");
     return 1;
   }
+    cerr << "initEnv 4a " << endl;
 
   char *lastSlash = strrchr(xpcomPath, '/');
   if (lastSlash)
     *lastSlash = '\0';
+
+    cerr << "initEnv 5a " << xpcomPath << endl;
 
   gtk_moz_embed_set_path(xpcomPath);
 
@@ -281,8 +285,12 @@ static JSBool initEnvironment(void)
   }
   full_path = g_strdup_printf("%s/%s", home_path, ".TestGtkEmbed");
 
+    cerr << "initEnv 6a " << full_path << endl;
+
   gtk_moz_embed_set_profile_path(full_path, "TestGtkEmbed");
 #endif
+
+    cerr << "initEnv fin " << endl;
 
 }
 
