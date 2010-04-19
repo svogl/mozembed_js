@@ -18,12 +18,13 @@
 //#include "nsStringAPI.h"
 #include "gtkmozembed_glue.cpp"
 
-#define check_args(assert, ...) if (!(assert)) { \
+#define fail_if_not(assert, ...) if (!(assert)) { \
 		fprintf(stderr, "%s:%d :: ", __FUNCTION__, __LINE__ );\
 		fprintf(stderr, __VA_ARGS__);\
 		return JS_FALSE; \
 	}
 
+#define fail_if(assert, ...) fail_if_not (!(assert), __VA_ARGS__)
 
 using namespace std;
 
@@ -48,23 +49,20 @@ static void init_gtk_stuff(MozEmbData* moz) {
 
     GtkWidget* window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-cerr << "init_gtk 1d " << endl;
+    cerr << "init_gtk 1d " << endl;
     GtkWidget* m = gtk_moz_embed_new();
 
-    gtk_widget_set_size_request(m, 600,400);
+//  gtk_widget_set_size_request(m, 600, 400);
 
     gtk_container_add(GTK_CONTAINER(window), m);
+    gtk_window_fullscreen(GTK_WINDOW(window));
+    gtk_window_set_decorated (GTK_WINDOW(window), 0);
 
-cerr << "init_gtk 1a0c " << endl;
     gtk_widget_show(m);
-cerr << "init_gtk 1a1c " << endl;
     gtk_widget_show(window);
-cerr << "init_gtk 1a2c " << endl;
-    cerr << "init_gtk 1 " << endl;
 
     moz->embed = GTK_MOZ_EMBED(m);
     moz->window = window;
-    cerr << "init_gtk 2 " << endl;
 }
 
 /** MozEmb Constructor */
@@ -79,7 +77,7 @@ static JSBool MozEmbConstructor(JSContext *cx, JSObject *obj, uintN argc, jsval 
 
         if (!JS_SetPrivate(cx, obj, moz))
             return JS_FALSE;
-    cerr << "*Moz 2 " << endl;
+        cerr << "*Moz 2 " << endl;
         return JS_TRUE;
     }
     return JS_FALSE;
@@ -120,15 +118,48 @@ static JSBool MozEmb_stop(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
     return JS_TRUE;
 }
 
+static JSBool MozEmb_go_back(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+    printf("mozembed.go_back() \n");
+
+    check_args((argc != 0), "must not pass an argument!\n");
+
+    MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
+
+    gtk_moz_embed_go_back(moz->embed);
+
+    return JS_TRUE;
+}
+
 static JSBool MozEmb_reload(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+    printf("mozembed.reload() \n");
+
+    check_args((argc != 0), "must not pass an argument!\n");
+
+    MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
+
+    gtk_moz_embed_reload(moz->embed, GTK_MOZ_EMBED_FLAG_RELOADNORMAL);
+
+    return JS_TRUE;
+}
+
+static JSBool GtkWin_fullscreen(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("mozembed.load() \n");
 
     check_args((argc != 0), "must not pass an argument!\n");
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
-    //extern void         gtk_moz_embed_reload           (GtkMozEmbed *embed, gint32 flags);
-    gtk_moz_embed_reload(moz->embed, GTK_MOZ_EMBED_FLAG_RELOADNORMAL);
+    gtk_window_fullscreen(GTK_WINDOW(moz->window));
+
+    return JS_TRUE;
+}
+
+static JSBool GtkWin_unfullscreen(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+    check_args((argc != 0), "must not pass an argument!\n");
+
+    MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
+
+    gtk_window_unfullscreen(GTK_WINDOW(moz->window));
 
     return JS_TRUE;
 }
@@ -140,12 +171,15 @@ static JSFunctionSpec _MozEmbFunctionSpec[] = {
     { "load", MozEmb_load, 0, 0, 0},
     { "stop", MozEmb_stop, 0, 0, 0},
     { "reload", MozEmb_reload, 0, 0, 0},
+    { "back", MozEmb_go_back, 0, 0, 0},
+    { "fullscreen", GtkWin_fullscreen, 0, 0, 0},
+    { "unfullscreen", GtkWin_unfullscreen, 0, 0, 0},
     { 0, 0, 0, 0, 0}
     /*
     http://www.mozilla.org/unix/gtk-embedding.html#function_reference
 
-    extern void         gtk_moz_embed_load_url         (GtkMozEmbed *embed, const char *url);
-    extern void         gtk_moz_embed_stop_load        (GtkMozEmbed *embed);
+x   extern void         gtk_moz_embed_load_url         (GtkMozEmbed *embed, const char *url);
+x   extern void         gtk_moz_embed_stop_load        (GtkMozEmbed *embed);
     extern gboolean     gtk_moz_embed_can_go_back      (GtkMozEmbed *embed);
     extern gboolean     gtk_moz_embed_can_go_forward   (GtkMozEmbed *embed);
     extern void         gtk_moz_embed_go_back          (GtkMozEmbed *embed);
@@ -174,8 +208,6 @@ static JSFunctionSpec _MozEmbFunctionSpec[] = {
     extern void         gtk_moz_embed_set_comp_path    (char *aPath);
 
      */
-
-
 };
 
 
@@ -222,72 +254,70 @@ static JSFunctionSpec _MozEmbStaticFunctionSpec[] = {
     { 0, 0, 0, 0, 0}
 };
 
-
-static JSBool initEnvironment(void)
-{
-     int argc = 0;
+static JSBool initEnvironment(void) {
+    int argc = 0;
     char** argv = {NULL};
-   gtk_set_locale();
+    gtk_set_locale();
     gtk_init(&argc, &argv);
 
     cerr << "initEnv 10a " << endl;
 #if 0
     gtk_moz_embed_set_comp_path("/usr/lib/xulrunner-1.9.1.8/components/");
     cerr << "initEnv 11a " << endl;
-    gtk_moz_embed_set_profile_path("/tmp","web_browser_user");
+    gtk_moz_embed_set_profile_path("/tmp", "web_browser_user");
     cerr << "initEnv 12a " << endl;
 
 #else
 
-  static const GREVersionRange greVersion = {
-    "1.9a", PR_TRUE,
-    "2", PR_TRUE
-  };
+    static const GREVersionRange greVersion = {
+        "1.9a", PR_TRUE,
+        "2", PR_TRUE
+    };
 
-  char xpcomPath[PATH_MAX];
+    char xpcomPath[PATH_MAX];
 
-  nsresult rv = GRE_GetGREPathWithProperties(&greVersion, 1, nsnull, 0,
-                                             xpcomPath, sizeof(xpcomPath));
-  if (NS_FAILED(rv)) {
-    fprintf(stderr, "Couldn't find a compatible GRE.\n");
-    return 1;
-  }
+    nsresult rv = GRE_GetGREPathWithProperties(&greVersion, 1, nsnull, 0,
+            xpcomPath, sizeof (xpcomPath));
+    if (NS_FAILED(rv)) {
+        fprintf(stderr, "Couldn't find a compatible GRE.\n");
+        return 1;
+    }
     cerr << "initEnv 2a " << endl;
 
-  rv = XPCOMGlueStartup(xpcomPath);
-  if (NS_FAILED(rv)) {
-    fprintf(stderr, "Couldn't start XPCOM.");
-    return 1;
-  }
+    rv = XPCOMGlueStartup(xpcomPath);
+    if (NS_FAILED(rv)) {
+        fprintf(stderr, "Couldn't start XPCOM.");
+        return 1;
+    }
     cerr << "initEnv 3a " << endl;
 
-  rv = GTKEmbedGlueStartup();
-  if (NS_FAILED(rv)) {
-    fprintf(stderr, "Couldn't find GTKMozEmbed symbols.");
-    return 1;
-  }
+    rv = GTKEmbedGlueStartup();
+    if (NS_FAILED(rv)) {
+        fprintf(stderr, "Couldn't find GTKMozEmbed symbols.");
+        return 1;
+    }
     cerr << "initEnv 4a " << endl;
 
-  char *lastSlash = strrchr(xpcomPath, '/');
-  if (lastSlash)
-    *lastSlash = '\0';
+    char *lastSlash = strrchr(xpcomPath, '/');
+    if (lastSlash)
+        *lastSlash = '\0';
 
     cerr << "initEnv 5a " << xpcomPath << endl;
 
-  gtk_moz_embed_set_path(xpcomPath);
+    gtk_moz_embed_set_path(xpcomPath);
 
-  char *home_path;
-  char *full_path;
-  home_path = getenv("HOME");
-  if (!home_path) {
-    fprintf(stderr, "Failed to get HOME\n");
-    exit(1);
-  }
-  full_path = g_strdup_printf("%s/%s", home_path, ".TestGtkEmbed");
+    char *home_path;
+    char *full_path;
+    home_path = getenv("HOME");
+    if (!home_path) {
+        fprintf(stderr, "Failed to get HOME\n");
+        exit(1);
+    }
+    full_path = g_strdup_printf("%s/%s", home_path, ".TestGtkEmbed");
 
     cerr << "initEnv 6a " << full_path << endl;
 
-  gtk_moz_embed_set_profile_path(full_path, "TestGtkEmbed");
+    gtk_moz_embed_set_profile_path(full_path, "TestGtkEmbed");
 #endif
 
     cerr << "initEnv fin " << endl;
