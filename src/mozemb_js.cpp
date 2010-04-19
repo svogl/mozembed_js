@@ -54,9 +54,9 @@ static void init_gtk_stuff(MozEmbData* moz) {
 
 //  gtk_widget_set_size_request(m, 600, 400);
 
-    gtk_container_add(GTK_CONTAINER(window), m);
-    gtk_window_fullscreen(GTK_WINDOW(window));
-    gtk_window_set_decorated (GTK_WINDOW(window), 0);
+    gtk_container_add( GTK_CONTAINER(window), m );
+    gtk_window_fullscreen( GTK_WINDOW(window) );
+    gtk_window_set_decorated ( GTK_WINDOW(window), 0);
 
     gtk_widget_show(m);
     gtk_widget_show(window);
@@ -95,8 +95,8 @@ static void MozEmbDestructor(JSContext *cx, JSObject *obj) {
 static JSBool MozEmb_load(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("mozembed.load() \n");
 
-    check_args((argc == 1), "must pass one argument!\n");
-    check_args(JSVAL_IS_STRING(argv[0]), "arg must be a string (url)!");
+    fail_if((argc != 1), "must pass one argument!\n");
+    fail_if_not(JSVAL_IS_STRING(argv[0]), "arg must be a string (url)!");
     JSString* urlStr = JSVAL_TO_STRING(argv[0]);
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
@@ -109,7 +109,7 @@ static JSBool MozEmb_load(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 static JSBool MozEmb_stop(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("object is in mainloop: %p\n", obj);
 
-    check_args((argc == 0), "must not pass an argument!\n");
+    fail_if_not((argc == 0), "must not pass an argument!\n");
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
@@ -121,7 +121,7 @@ static JSBool MozEmb_stop(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
 static JSBool MozEmb_go_back(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("mozembed.go_back() \n");
 
-    check_args((argc != 0), "must not pass an argument!\n");
+    fail_if((argc != 0), "must not pass an argument!\n");
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
@@ -133,7 +133,7 @@ static JSBool MozEmb_go_back(JSContext *cx, JSObject *obj, uintN argc, jsval *ar
 static JSBool MozEmb_reload(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("mozembed.reload() \n");
 
-    check_args((argc != 0), "must not pass an argument!\n");
+    fail_if((argc != 0), "must not pass an argument!\n");
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
@@ -145,7 +145,7 @@ static JSBool MozEmb_reload(JSContext *cx, JSObject *obj, uintN argc, jsval *arg
 static JSBool GtkWin_fullscreen(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("mozembed.load() \n");
 
-    check_args((argc != 0), "must not pass an argument!\n");
+    fail_if((argc != 0), "must not pass an argument!\n");
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
@@ -155,7 +155,7 @@ static JSBool GtkWin_fullscreen(JSContext *cx, JSObject *obj, uintN argc, jsval 
 }
 
 static JSBool GtkWin_unfullscreen(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
-    check_args((argc != 0), "must not pass an argument!\n");
+    fail_if((argc != 0), "must not pass an argument!\n");
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
@@ -229,7 +229,7 @@ static JSClass MozEmb_jsClass = {
 static JSBool MozEmb_s_mainloop(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("object is in mainloop: %p\n", obj);
 
-    check_args((argc == 0), "must not pass an argument!\n");
+    fail_if_not((argc == 0), "must not pass an argument!\n");
 
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
@@ -241,7 +241,7 @@ static JSBool MozEmb_s_mainloop(JSContext *cx, JSObject *obj, uintN argc, jsval 
 static JSBool MozEmb_s_quit(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
     printf("object is in mainloop: %p\n", obj);
 
-    check_args((argc == 0), "must not pass an argument!\n");
+    fail_if_not((argc == 0), "must not pass an argument!\n");
 
     gtk_exit(0);
 
