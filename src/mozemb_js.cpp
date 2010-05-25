@@ -52,10 +52,10 @@ static void init_gtk_stuff(MozEmbData* moz) {
     cerr << "init_gtk 1d " << endl;
     GtkWidget* m = gtk_moz_embed_new();
 
-//  gtk_widget_set_size_request(m, 600, 400);
+  gtk_widget_set_size_request(m, 600, 400);
 
     gtk_container_add( GTK_CONTAINER(window), m );
-    gtk_window_fullscreen( GTK_WINDOW(window) );
+//    gtk_window_fullscreen( GTK_WINDOW(window) );
     gtk_window_set_decorated ( GTK_WINDOW(window), 0);
 
     gtk_widget_show(m);
@@ -215,7 +215,7 @@ x   extern void         gtk_moz_embed_stop_load        (GtkMozEmbed *embed);
 ///// MozEmb Class Definition
 
 static JSClass MozEmb_jsClass = {
-    "MozEmb", JSCLASS_HAS_PRIVATE,
+    "MozEmbed", JSCLASS_HAS_PRIVATE,
     JS_PropertyStub, JS_PropertyStub, // add/del prop
     JS_PropertyStub, JS_PropertyStub, // get/set prop
     JS_EnumerateStub, JS_ResolveStub, // enum / resolve
@@ -343,6 +343,7 @@ JSObject* MozEmbInit(JSContext *cx, JSObject *obj) {
 }
 
 /*************************************************************************************************/
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
