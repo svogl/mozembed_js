@@ -37,10 +37,100 @@ typedef struct _MozEmb {
     GtkWidget *window;
     GtkMozEmbed *embed;
     char* name; ///< widget?
-
+    JSContext *cx; ///< our js object
+    JSObject *obj; ///< our context
 } MozEmbData;
 
 /*************************************************************************************************/
+
+
+static void link_message_cb(GtkMozEmbed *embed, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "link_message_cb callback!";
+    char* status = gtk_moz_embed_get_link_message(embed);
+    cout << status << endl;
+    g_free(status);
+
+    JS_BeginRequest(dta->cx);
+    JS_EndRequest(dta->cx);
+}
+
+static void js_status_cb(GtkMozEmbed *embed, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "js_status_c callback!" << endl;
+    char* status = gtk_moz_embed_get_js_status(embed);
+    cout << status << endl;
+    g_free(status);
+}
+
+static void location_changed_cb(GtkMozEmbed *embed, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "location_changed_cb callback!" << endl;
+}
+
+static void title_changed_cb(GtkMozEmbed *embed, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "title_changed_cb callback!" << endl;
+}
+
+static void progress_change_cb(GtkMozEmbed *embed, gint cur, gint max, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "progress_change_cb callback!" << cur << "/" << max << endl;
+}
+
+static void net_state_change_cb(GtkMozEmbed *embed, gint flags, guint status, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "net_state_change_cb callback! " << status << endl;
+}
+
+static void load_started_cb(GtkMozEmbed *embed, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "load_started_cb callback!" << endl;
+}
+
+static void load_finished_cb(GtkMozEmbed *embed, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "load_finished_cb callback!" << endl;
+}
+
+static void new_window_cb(GtkMozEmbed *embed, GtkMozEmbed **retval, guint chromemask, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+
+    cout << "new_window_cb callback!" << hex << chromemask << dec << endl;
+    *retval = 0;
+}
+
+static void visibility_cb(GtkMozEmbed *embed, gboolean visibility, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+    cout << "visibility_cb callback!" << endl;
+}
+
+static void destroy_brsr_cb(GtkMozEmbed *embed, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+    cerr << "destroy_brsr_cb callback!" << endl;
+
+    JS_BeginRequest(dta->cx);
+    jsval args;
+    jsval ret;
+    JSBool ok = JS_CallFunctionName(dta->cx, dta->obj, "quit", 0, &args, &ret);
+    if (!ok) {
+        cerr << "Error: Callback did not work out!" << endl;
+    }
+    JS_EndRequest(dta->cx);
+}
+
+static gint open_uri_cb(GtkMozEmbed *embed, const char *uri, gpointer data) {
+    MozEmbData* dta = (MozEmbData*) data;
+    cout << "open_uri_cb callback!" << endl;
+}
 
 static void init_gtk_stuff(MozEmbData* moz) {
     int argc = 0;
@@ -52,11 +142,28 @@ static void init_gtk_stuff(MozEmbData* moz) {
     cerr << "init_gtk 1d " << endl;
     GtkWidget* m = gtk_moz_embed_new();
 
-  gtk_widget_set_size_request(m, 600, 400);
+    gtk_widget_set_size_request(m, 600, 400);
 
-    gtk_container_add( GTK_CONTAINER(window), m );
-//    gtk_window_fullscreen( GTK_WINDOW(window) );
-    gtk_window_set_decorated ( GTK_WINDOW(window), 0);
+    g_signal_connect(m, "net_stop",
+            (GCallback) load_finished_cb, (gpointer) moz);
+    g_signal_connect(m, "net_start",
+            (GCallback) load_started_cb, (gpointer) moz);
+    g_signal_connect(m, "net_state",
+            (GCallback) net_state_change_cb, (gpointer) moz);
+    g_signal_connect(m, "progress",
+            (GCallback) progress_change_cb, (gpointer) moz);
+
+    g_signal_connect(m, "js_status",
+            (GCallback) js_status_cb, (gpointer) moz);
+
+    g_signal_connect(m, "destroy_browser",
+            (GCallback) destroy_brsr_cb, (gpointer) moz);
+    g_signal_connect(m, "new_window",
+            (GCallback) new_window_cb, (gpointer) moz);
+
+    gtk_container_add(GTK_CONTAINER(window), m);
+    //    gtk_window_fullscreen( GTK_WINDOW(window) );
+    gtk_window_set_decorated(GTK_WINDOW(window), 0);
 
     gtk_widget_show(m);
     gtk_widget_show(window);
@@ -72,11 +179,13 @@ static JSBool MozEmbConstructor(JSContext *cx, JSObject *obj, uintN argc, jsval 
         MozEmbData* moz = NULL;
 
         moz = (MozEmbData*) calloc(sizeof (MozEmbData), 1);
-
-        init_gtk_stuff(moz);
+        moz->cx = cx;
+        moz->obj = obj;
 
         if (!JS_SetPrivate(cx, obj, moz))
             return JS_FALSE;
+
+        init_gtk_stuff(moz);
         cerr << "*Moz 2 " << endl;
         return JS_TRUE;
     }
@@ -102,6 +211,10 @@ static JSBool MozEmb_load(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
     MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
 
     gtk_moz_embed_load_url(moz->embed, JS_GetStringBytes(urlStr));
+
+    gint w, h;
+    gtk_window_get_size(GTK_WINDOW(moz->window), &w, &h);
+    gtk_window_resize(GTK_WINDOW(moz->window), w, h);
 
     return JS_TRUE;
 }
