@@ -58,10 +58,7 @@ function Browser(bus) {
 		//Glib.quit();
 		//this.moz.quit();
 		MozEmbed.quit();
-
 	}
-
-	this.moz.setCallback(statusCb);
 }
 
 ///////////////////gui client:
@@ -104,7 +101,7 @@ browser = new Browser(bus);
 
 function statusCb(str) {
 	print("JS::Client::statusCb() " + str );
-	if (str == "quit") {
+	if (str == "urn:/cmd/gui/quit") {
 		MozEmbed.quit();
 	}
 }
@@ -125,7 +122,6 @@ guic.addClient(client);
 browser.goto("/","file:///opt/smarthome-src/shc/js/mozemb_js/tests/close.html");
 
 bus.requestBusName("at.beko.smarthome.Browser.Service");
-
 
 MozEmbed.main();
 
