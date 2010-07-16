@@ -101,7 +101,7 @@ browser = new Browser(bus);
 
 function statusCb(str) {
 	print("JS::Client::statusCb() " + str );
-	if (str == "urn:/cmd/gui/quit") {
+	if (str == "urn:/gui/browser/quit") {
 		MozEmbed.quit();
 	}
 }
@@ -118,8 +118,10 @@ intro.expose(guic._path, guic);
 client = new Client(browser);
 guic.addClient(client);
 
-//browser.fullscreen();
-browser.goto("/","file:///opt/smarthome-src/shc/js/mozemb_js/tests/close.html");
+browser.fullscreen();
+//browser.goto("/","file:///opt/smarthome-src/shc/js/mozemb_js/tests/close.html");
+
+browser.goto("/","http://masterbutler/spar2/catalog");
 
 bus.requestBusName("at.beko.smarthome.Browser.Service");
 
