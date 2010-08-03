@@ -127,7 +127,7 @@ static void _triggerCallbackInt(MozEmbData* moz, const char* source, jsint arg)
     jsval args[2];
     jsval ret;
     args[0] = STRING_TO_JSVAL( JS_NewStringCopyZ(moz->cx, source) );
-    args[1] = INT_TO_JSVAL( &arg );
+    args[1] = INT_TO_JSVAL( arg );
 
     JSBool ok = JS_CallFunction(moz->cx, moz->obj, moz->cb, 2, args, &ret);
 
@@ -433,6 +433,33 @@ static JSBool GtkWin_unfullscreen(JSContext *cx, JSObject *obj, uintN argc, jsva
     return JS_TRUE;
 }
 
+static JSBool MozEmb_get_title(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+    printf("mozembed.get_title() \n");
+
+    fail_if((argc != 0), "must not pass an argument!\n");
+
+    MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
+    char* title;
+
+    title = gtk_moz_embed_get_title(moz->embed);
+    *rval = STRING_TO_JSVAL( JS_NewString(moz->cx, title, strlen(title)) );
+    return JS_TRUE;
+}
+
+static JSBool MozEmb_get_location(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+    printf("mozembed.get_title() \n");
+
+    fail_if((argc != 0), "must not pass an argument!\n");
+
+    MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
+    char* title;
+
+    title = gtk_moz_embed_get_location(moz->embed);
+    *rval = STRING_TO_JSVAL( JS_NewString(moz->cx, title, strlen(title)) );
+    return JS_TRUE;
+}
+
+
 /*************************************************************************************************/
 
 ///// MozEmb Function Table
@@ -445,6 +472,9 @@ static JSFunctionSpec _MozEmbFunctionSpec[] = {
     { "setCallback", MozEmb_set_callback, 0, 0, 0},
     { "fullscreen", GtkWin_fullscreen, 0, 0, 0},
     { "unfullscreen", GtkWin_unfullscreen, 0, 0, 0},
+    // informational funcs:
+    { "title", MozEmb_get_title, 0, 0, 0},
+    { "location", MozEmb_get_location, 0, 0, 0},
     { 0, 0, 0, 0, 0}
     /*
     http://www.mozilla.org/unix/gtk-embedding.html#function_reference
