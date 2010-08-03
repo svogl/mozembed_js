@@ -46,15 +46,96 @@ typedef struct _MozEmb {
 
 
 static void link_message_cb(GtkMozEmbed *embed, gpointer data) {
-    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
 
     cout << "link_message_cb callback!";
     char* status = gtk_moz_embed_get_link_message(embed);
     cout << status << endl;
     g_free(status);
 
-    JS_BeginRequest(dta->cx);
-    JS_EndRequest(dta->cx);
+    JS_BeginRequest(moz->cx);
+    JS_EndRequest(moz->cx);
+}
+
+
+/** trigger the js callback function using a string parameter. n.b. that the strings is copied.
+ */
+static void _triggerCallbackStr(MozEmbData* moz, const char* source, const char* arg)
+{
+    JS_BeginRequest(moz->cx);
+
+    jsval args[2];
+    jsval ret;
+    args[0] = STRING_TO_JSVAL( JS_NewStringCopyZ(moz->cx, source) );
+    args[1] = STRING_TO_JSVAL( JS_NewStringCopyZ(moz->cx, arg) );
+
+    JSBool ok = JS_CallFunction(moz->cx, moz->obj, moz->cb, 2, args, &ret);
+
+    if (!ok) {
+      cerr << "Error: Callback for " << source << " did not work out!" << endl;
+    }
+
+    JS_EndRequest(moz->cx);
+}
+
+/** second argument is set to null!
+ */
+static void _triggerCallback(MozEmbData* moz, const char* source)
+{
+    JS_BeginRequest(moz->cx);
+
+    jsval args[2];
+    jsval ret;
+    args[0] = STRING_TO_JSVAL( JS_NewStringCopyZ(moz->cx, source) );
+    args[1] = JSVAL_NULL;
+
+    JSBool ok = JS_CallFunction(moz->cx, moz->obj, moz->cb, 2, args, &ret);
+
+    if (!ok) {
+      cerr << "Error: Callback for " << source << " did not work out!" << endl;
+    }
+
+    JS_EndRequest(moz->cx);
+}
+
+/**
+ */
+static void _triggerCallbackDouble(MozEmbData* moz, const char* source, jsdouble arg)
+{
+    JS_BeginRequest(moz->cx);
+
+    jsval args[2];
+    jsval ret;
+    args[0] = STRING_TO_JSVAL( JS_NewStringCopyZ(moz->cx, source) );
+    args[1] = DOUBLE_TO_JSVAL( &arg );
+
+    JSBool ok = JS_CallFunction(moz->cx, moz->obj, moz->cb, 2, args, &ret);
+
+    if (!ok) {
+      cerr << "Error: Callback for " << source << " did not work out!" << endl;
+    }
+
+    JS_EndRequest(moz->cx);
+}
+
+/**
+ */
+static void _triggerCallbackInt(MozEmbData* moz, const char* source, jsint arg)
+{
+    JS_BeginRequest(moz->cx);
+
+    jsval args[2];
+    jsval ret;
+    args[0] = STRING_TO_JSVAL( JS_NewStringCopyZ(moz->cx, source) );
+    args[1] = INT_TO_JSVAL( &arg );
+
+    JSBool ok = JS_CallFunction(moz->cx, moz->obj, moz->cb, 2, args, &ret);
+
+    if (!ok) {
+      cerr << "Error: Callback for " << source << " did not work out!" << endl;
+    }
+
+    JS_EndRequest(moz->cx);
 }
 
 static void js_status_cb(GtkMozEmbed *embed, gpointer data) {
@@ -68,111 +149,87 @@ static void js_status_cb(GtkMozEmbed *embed, gpointer data) {
         return;
     }
 
-    JS_BeginRequest(moz->cx);
-#if 0
-    jsval funcv;
-    JS_GetProperty(moz->cx, moz->obj, "statusCb", &funcv);
-    if (!JSVAL_IS_OBJECT(funcv)) {
-        cerr << "func no obj"<<endl;
-        JS_EndRequest(moz->cx);
-        g_free(status);
-        return;
-    }
-    JSObject * func = JSVAL_TO_OBJECT(funcv);
-    if (!JS_ObjectIsFunction(moz->cx, func)) {
-        cerr << "obj is no func"<<endl;
-        JS_EndRequest(moz->cx);
-        g_free(status);
-        return;
-    };
-    JSFunction* cb = JS_ValueToFunction(moz->cx, funcv);
-    JSString* str = JS_NewString(moz->cx, status, strlen(status));
-    jsval args = STRING_TO_JSVAL(str);
-    jsval ret;
-    JSBool ok = JS_CallFunction(moz->cx, moz->obj, cb, 1, &args, &ret);
-#endif
-    JSString* str = JS_NewString(moz->cx, status, strlen(status));
-    jsval args = STRING_TO_JSVAL(str);
-    jsval ret;
-    JSBool ok = JS_CallFunction(moz->cx, moz->obj, moz->cb, 1, &args, &ret);
-            //JS_CallFunctionName(dta->cx, dta->obj, "statusCb", 1, &args, &ret);
-    if (!ok) {
-        cerr << "Error: Callback did not work out!" << endl;
-    }
-
-    JS_EndRequest(moz->cx);
-    //g_free(status); -> transferred to js
+    _triggerCallbackStr(moz,"status",status);
+    g_free(status);
 }
 
 static void location_changed_cb(GtkMozEmbed *embed, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
-
+    MozEmbData* moz = (MozEmbData*) data;
+    char* url = gtk_moz_embed_get_location(moz->embed);
     cout << "location_changed_cb callback!" << endl;
+    _triggerCallbackStr(moz,"location_changed",url);
+    g_free(url);
 }
 
 static void title_changed_cb(GtkMozEmbed *embed, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
 
     cout << "title_changed_cb callback!" << endl;
+    _triggerCallbackStr(moz,"title_changed","");
 }
 
 static void progress_change_cb(GtkMozEmbed *embed, gint cur, gint max, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
 
     cout << "progress_change_cb callback!" << cur << "/" << max << endl;
+    gtk_main_iteration();
+    _triggerCallbackDouble(moz,"progress", cur/max);
 }
 
 static void net_state_change_cb(GtkMozEmbed *embed, gint flags, guint status, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
 
     cout << "net_state_change_cb callback! " << status << endl;
+    _triggerCallbackInt(moz,"state_changed",status);
 }
 
 static void load_started_cb(GtkMozEmbed *embed, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
 
     cout << "load_started_cb callback!" << endl;
+    _triggerCallback(moz,"load_started");
 }
 
 static void load_finished_cb(GtkMozEmbed *embed, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
 
     cout << "load_finished_cb callback!" << endl;
+    _triggerCallback(moz,"load_finished");
 }
 
 static void new_window_cb(GtkMozEmbed *embed, GtkMozEmbed **retval, guint chromemask, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
+//    MozEmbData* moz = (MozEmbData*) data;
 
     cout << "new_window_cb callback!" << hex << chromemask << dec << endl;
     *retval = 0;
 }
 
 static void visibility_cb(GtkMozEmbed *embed, gboolean visibility, gpointer data) {
-//    MozEmbData* dta = (MozEmbData*) data;
+//    MozEmbData* moz = (MozEmbData*) data;
     cout << "visibility_cb callback!" << endl;
 }
 
 static void destroy_brsr_cb(GtkMozEmbed *embed, gpointer data) {
-    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
     cerr << "destroy_brsr_cb callback!" << endl;
 
-    JS_BeginRequest(dta->cx);
+    JS_BeginRequest(moz->cx);
     jsval args;
     jsval ret;
-    JSBool ok = JS_CallFunctionName(dta->cx, dta->obj, "quitCb", 0, &args, &ret);
+    JSBool ok = JS_CallFunctionName(moz->cx, moz->obj, "quitCb", 0, &args, &ret);
     if (!ok) {
         cerr << "Error: Callback did not work out!" << endl;
     }
-    JS_EndRequest(dta->cx);
+    JS_EndRequest(moz->cx);
 }
 
 static gint destroy_cb(GtkMozEmbed *embed, gpointer data) {
-    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
     cout << "destroy callback!" << endl;
 }
 
 static gint open_uri_cb(GtkMozEmbed *embed, const char *uri, gpointer data) {
-    MozEmbData* dta = (MozEmbData*) data;
+    MozEmbData* moz = (MozEmbData*) data;
     cout << "open_uri_cb callback!" << endl;
 }
 
