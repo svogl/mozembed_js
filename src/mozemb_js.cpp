@@ -261,6 +261,9 @@ static void init_gtk_stuff(MozEmbData* moz) {
     g_signal_connect(m, "progress",
             (GCallback) progress_change_cb, (gpointer) moz);
     cerr << "ret " << ret << endl;
+    g_signal_connect(m, "location",
+            (GCallback) location_changed_cb, (gpointer) moz);
+    cerr << "ret " << ret << endl;
 
     g_signal_connect(m, "js_status",
             (GCallback) js_status_cb, (gpointer) moz);
