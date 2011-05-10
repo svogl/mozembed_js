@@ -116,6 +116,13 @@ static JSBool MozEmb_set_zoom(JSContext *cx, JSObject *obj, uintN argc, jsval *a
     nsCOMPtr<nsIWebBrowser> brws;
     nsCOMPtr<nsIDOMWindow>  domWindow;
 
+
+    fail_if((argc != 1), "must pass one argument ( float )!\n");
+    fail_if( ! JSVAL_IS_NUMBER(argv[0]), "must pass one argument ( float )!\n");
+	jsdouble zoom = *JSVAL_TO_DOUBLE(argv[0]);
+
+    fail_if( zoom <= 0.0 , "zoom must be positive!\n");
+	
     gtk_moz_embed_get_nsIWebBrowser(GTK_MOZ_EMBED(moz->embed), getter_AddRefs(brws));
 	if (!brws) {
 		cerr << "browser interface not found " << endl;
@@ -133,7 +140,7 @@ static JSBool MozEmb_set_zoom(JSContext *cx, JSObject *obj, uintN argc, jsval *a
         activeWindow->SetTextZoom(1.41f);
         return TRUE;
     }
-#endif    
+#endif
 
 	nsCOMPtr < nsIDocShell > doc_shell;
     doc_shell = do_GetInterface(browser);
@@ -149,7 +156,7 @@ static JSBool MozEmb_set_zoom(JSContext *cx, JSObject *obj, uintN argc, jsval *a
 	static const nsIID iid3 = NS_IMARKUPDOCUMENTVIEWER_IID;
 	contentView->QueryInterface( iid3, getter_AddRefs(markp) );
 
-	markp->SetFullZoom(1.41f);
+	markp->SetFullZoom(zoom);
 
 	return JS_TRUE;
 }
