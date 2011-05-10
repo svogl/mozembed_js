@@ -15,8 +15,16 @@
 
 #include <gtk/gtk.h>
 
-//#include "nsStringAPI.h"
-#include "gtkmozembed_glue.cpp"
+#include <nsIDocShell.h>
+#include <nsCOMPtr.h>
+#include <nsIContentViewer.h>
+#include <nsIWebBrowser.h>
+#include <nsIDOMWindow.h>
+#include <nsIMarkupDocumentViewer.h>
+#include <nsIInterfaceRequestor.h>
+#include <nsIInterfaceRequestorUtils.h>
+
+#include <nsXPCOMGlue.h>
 
 #define fail_if_not(assert, ...) if (!(assert)) { \
 		fprintf(stderr, "%s:%d :: ", __FUNCTION__, __LINE__ );\
@@ -27,6 +35,63 @@
 #define fail_if(assert, ...) fail_if_not (!(assert), __VA_ARGS__)
 
 using namespace std;
+
+/*
+ * GetDOMOWindowObject: 
+ *		retrieve refercne to the DOMWindow
+ *
+ */
+static nsIDOMWindow *GetDOMOWindowObject(nsIWebBrowser * wb)
+{
+    nsCOMPtr < nsIDOMWindow > oDomWindow;
+    nsresult rv;
+
+    rv = wb->GetContentDOMWindow(getter_AddRefs(oDomWindow));
+
+   // BR_LOGPRINTF("GetContentDOMWindow rv %d", rv);
+
+    if (!oDomWindow)
+    {
+     //   BR_WARNPRINTF("Cannot create Dom Window Object");
+    }
+    return oDomWindow;
+}
+
+
+static JSBool __browser_set_zoom(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval,nsIWebBrowser* browser ) 
+{
+#if 0
+    nsCOMPtr < nsIDOMWindow > activeWindow;
+	// only works for text...
+    activeWindow = GetDOMOWindowObject(browser);
+
+    if ((activeWindow))
+    {
+        activeWindow->SetTextZoom(1.41f);
+        return TRUE;
+    }
+#endif    
+	nsCOMPtr < nsIDocShell > doc_shell;
+    doc_shell = do_GetInterface(browser);
+	if (!doc_shell) {
+		cerr << "*** docshell returned null" << endl;
+		return JS_FALSE;
+	}
+
+    nsIContentViewer* contentView;
+	doc_shell->GetContentViewer(&contentView);
+
+	nsCOMPtr<nsIMarkupDocumentViewer> markp;
+	static const nsIID iid3 = NS_IMARKUPDOCUMENTVIEWER_IID;
+	contentView->QueryInterface( iid3, getter_AddRefs(markp) );
+
+	markp->SetFullZoom(1.41f);
+
+}
+
+
+#include "gtkmozembed.h"
+#include "gtkmozembed_internal.h"
 
 ////////////////////////////////////////
 /////   MozEmb class
@@ -44,6 +109,50 @@ typedef struct _MozEmb {
 
 /*************************************************************************************************/
 
+static JSBool MozEmb_set_zoom(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
+    MozEmbData* moz = (MozEmbData *) JS_GetPrivate(cx, obj);
+    cerr << "set zoom!" << endl;
+
+    nsCOMPtr<nsIWebBrowser> brws;
+    nsCOMPtr<nsIDOMWindow>  domWindow;
+
+    gtk_moz_embed_get_nsIWebBrowser(GTK_MOZ_EMBED(moz->embed), getter_AddRefs(brws));
+	if (!brws) {
+		cerr << "browser interface not found " << endl;
+		return JS_FALSE;
+	}
+	nsIWebBrowser* browser = brws;
+	
+#if 0
+	// only works for text...
+    nsCOMPtr < nsIDOMWindow > activeWindow;
+    activeWindow = GetDOMOWindowObject(browser);
+
+    if ((activeWindow))
+    {
+        activeWindow->SetTextZoom(1.41f);
+        return TRUE;
+    }
+#endif    
+
+	nsCOMPtr < nsIDocShell > doc_shell;
+    doc_shell = do_GetInterface(browser);
+	if (!doc_shell) {
+		cerr << "*** docshell returned null" << endl;
+		return JS_FALSE;
+	}
+
+    nsIContentViewer* contentView;
+	doc_shell->GetContentViewer(&contentView);
+
+	nsCOMPtr<nsIMarkupDocumentViewer> markp;
+	static const nsIID iid3 = NS_IMARKUPDOCUMENTVIEWER_IID;
+	contentView->QueryInterface( iid3, getter_AddRefs(markp) );
+
+	markp->SetFullZoom(1.41f);
+
+	return JS_TRUE;
+}
 
 static void link_message_cb(GtkMozEmbed *embed, gpointer data) {
     MozEmbData* moz = (MozEmbData*) data;
@@ -289,7 +398,7 @@ static void init_gtk_stuff(MozEmbData* moz) {
 
     gtk_widget_show(m);
     gtk_widget_show(window);
-
+	gtk_widget_show_all(window);
     moz->embed = GTK_MOZ_EMBED(m);
     moz->window = window;
 }
@@ -469,6 +578,7 @@ static JSFunctionSpec _MozEmbFunctionSpec[] = {
     { "back", MozEmb_go_back, 0, 0, 0},
     { "forward", MozEmb_go_forward, 0, 0, 0},
     { "reload", MozEmb_reload, 0, 0, 0},
+    { "zoom", MozEmb_set_zoom, 0, 0, 0},
     { "setCallback", MozEmb_set_callback, 0, 0, 0},
     { "fullscreen", GtkWin_fullscreen, 0, 0, 0},
     { "unfullscreen", GtkWin_unfullscreen, 0, 0, 0},
@@ -557,6 +667,8 @@ void new_window_orphan_cb(GtkMozEmbedSingle *embed,
     g_print("new browser is %p\n", (void *) * retval);
 }
 
+#include <gtkmozembed_glue.cpp>
+
 static JSBool initEnvironment(void) {
     int argc = 0;
     char** argv = {NULL};
@@ -593,6 +705,8 @@ static JSBool initEnvironment(void) {
         return 1;
     }
     cerr << "initEnv 4a " << endl;
+
+    rv = GTKEmbedGlueStartupInternal();
 
     char *lastSlash = strrchr(xpcomPath, '/');
     if (lastSlash)

@@ -118,10 +118,57 @@ intro.expose(guic._path, guic);
 client = new Client(browser);
 guic.addClient(client);
 
-browser.fullscreen();
+//browser.fullscreen();
 //browser.goto("/","file:///opt/smarthome-src/shc/js/mozemb_js/tests/close.html");
 
-browser.goto("/","http://masterbutler/spar2/catalog");
+browser.goto("/","http://www.orf.at/");
+
+
+function statusCb(str) {
+    print("JS::Client::statusCb() " + str );
+}
+
+location = "http:///";
+
+// n.b. arg is dbl; value is negative is max unknown (->max==-1)
+function progressCb(frac) {
+    print("JS::Client::progressCb() " +frac);
+	if (frac && frac>0) {
+	browser.moz.zoom();
+	}
+}
+
+function netStateCb(state) {
+    print("JS::Client::netStateCb() " + state);
+}
+
+function naviCb(url) {
+    print("JS::Client::naviCb() " + url);
+    location = url;
+}
+
+function keyCb(state) {
+    print("JS::Client::key() " + state);
+}
+
+callbacks = new Object();
+callbacks["status"] = statusCb;
+callbacks["progress"] = progressCb;
+callbacks["state_changed"] = netStateCb;
+callbacks["load_finished"] = keyCb;
+callbacks["location_changed"] = naviCb;
+
+
+function handler(source, arg) {
+    if (callbacks[source]) {
+	return callbacks[source](arg);
+    } else {
+	print("JS::handler() ignore " + source);
+    }
+}
+
+browser.moz.setCallback(handler);
+
 
 bus.requestBusName("at.beko.smarthome.Browser.Service");
 
